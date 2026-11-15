@@ -7,26 +7,29 @@ sources:
   - ../../../../Input/UX_Strategy_Investing_Platform.md
 updated: 2026-11-15
 colors:
-  canvas: '#F8F6F1'
+  canvas: '#F4F6FC'
   surface: '#FFFFFF'
-  surface-subtle: '#EEEAE2'
-  ink: '#17242E'
-  ink-secondary: '#4B5962'
-  border: '#727B7F'
-  brand: '#214A5C'
-  positive: '#28624F'
+  surface-subtle: '#E8EBF6'
+  accent-soft: '#EEEDFF'
+  ink: '#17213A'
+  ink-secondary: '#47536A'
+  border: '#667085'
+  brand: '#4438B8'
+  accent: '#5468F3'
+  positive: '#176B55'
   negative: '#A33A35'
-  focus: '#214A5C'
-  canvas-dark: '#111A20'
-  surface-dark: '#1B272E'
-  surface-subtle-dark: '#26343B'
-  ink-dark: '#F5F2EB'
-  ink-secondary-dark: '#C1C9C8'
-  border-dark: '#849092'
-  brand-dark: '#A8CBD5'
-  positive-dark: '#9DD3B5'
+  focus: '#352B97'
+  canvas-dark: '#101527'
+  surface-dark: '#192139'
+  surface-subtle-dark: '#26304C'
+  ink-dark: '#F6F7FB'
+  ink-secondary-dark: '#C0C7DA'
+  border-dark: '#AEB9CF'
+  brand-dark: '#C5BCFF'
+  accent-dark: '#B7C1FF'
+  positive-dark: '#8AE0BB'
   negative-dark: '#FFAAA0'
-  focus-dark: '#A8CBD5'
+  focus-dark: '#C5BCFF'
 typography:
   display:
     fontFamily: 'Noto Sans'
@@ -73,6 +76,10 @@ components:
     background: '{colors.brand}'
     foreground: '{colors.surface}'
     radius: '{rounded.md}'
+  button-primary-hover:
+    background: '{colors.focus}'
+    foreground: '{colors.surface}'
+    radius: '{rounded.md}'
   button-secondary:
     background: '{colors.surface}'
     foreground: '{colors.brand}'
@@ -94,13 +101,13 @@ components:
 
 ## Brand & Style
 
-**Working direction, not an approved brand identity.** The PRD and strategy call for calm, warm, credible, and trustworthy. This draft uses a restrained blue-green anchor and warm neutral surfaces as a testable interpretation of that direction. Product name, exact palette, and brand voice remain open for user and brand review. Token colors are provisional; replace or approve them after Hindi/English accessibility checks.
+**Working direction, not an approved brand identity.** The PRD and strategy call for calm, credible, and trustworthy. Following the user's request for a more engaging, easier-to-scan screen, this draft explores a crisp indigo-blue palette on bright, cool-neutral surfaces, with teal reserved for positive states. Strong color marks the selected destination and one clear next action; muted surfaces group supporting details. Product name, exact palette, and brand voice remain open for user and brand review. Token colors are provisional; verify Hindi/English accessibility before approval.
 
 The visual hierarchy favors plain explanations, visible costs, and meaningful next steps. Charts and portfolio values remain quiet. Movement is communicated with labels, signs, and icons as well as color. Avoid trading-floor urgency, ornamental wealth imagery, and celebratory treatment of financial risk.
 
 ## Colors
 
-Frontmatter colors are provisional starting values, not researched brand decisions. `canvas` supports a warm, low-glare page; `surface` holds readable content; `brand` marks the primary action and navigation emphasis. `positive` and `negative` are state cues only and never carry meaning alone. Use `negative` for errors needing attention, not for ordinary market declines. Dark tokens form a complete dark theme; do not derive dark mode by inverting light colors.
+Frontmatter colors are provisional starting values, not researched brand decisions. `canvas` gives the page a light, cool-neutral base; `surface` holds readable content; `brand` marks the primary action and selected navigation; `accent` adds a brighter secondary interaction cue; `accent-soft` groups one related content area. `positive` and `negative` are state cues only and never carry meaning alone. Use `negative` for errors needing attention, not for ordinary market declines. Dark tokens form a complete dark theme; do not derive dark mode by inverting light colors.
 
 Verify text and control contrast for every token pairing in both themes and both scripts before release. The design target is WCAG AA text contrast (4.5:1 for ordinary text, 3:1 for large text and essential non-text controls); the PRD calls for WCAG AA, and the strategy proposes WCAG 2.2 AA as a stretch target.
 
@@ -110,7 +117,7 @@ Use a font family with complete Devanagari and Latin glyph coverage; Noto Sans i
 
 ## Layout & Spacing
 
-Use a single-column mobile layout with `gutter-mobile` on Android phones. The 360dp screen is a stress-test width, not a minimum-device requirement. Keep the main action reachable, allow long Hindi strings to wrap, and avoid fixed-height text containers. Tablet and later iOS/web layouts may use wider content columns while preserving reading order and clear action hierarchy.
+Use a single-column mobile layout with `gutter-mobile` on Android phones. The 360dp screen is a stress-test width, not a minimum-device requirement. Keep one primary next action visually distinct, group secondary information into quiet cards, and avoid repeating actions already present in bottom navigation. Keep the main action reachable, allow long Hindi strings to wrap, and avoid fixed-height text containers. Tablet and later iOS/web layouts may use wider content columns while preserving reading order and clear action hierarchy.
 
 The spacing scale is a 4px base with 8px rhythm for related elements. Use `section` between distinct task groups. Dense financial details should be progressively disclosed, never removed from required pre-commit review.
 
@@ -126,7 +133,7 @@ Use `rounded.sm` for fields and compact controls, `rounded.md` for cards and she
 
 | Component | Visual contract |
 |---|---|
-| Primary and secondary buttons | Use the matching button tokens. Text labels state the action; disabled state has readable text and a programmatic reason. |
+| Primary and secondary buttons | Use the matching button tokens. Keep one filled primary action per screen section; secondary actions use text or outline treatment. Text labels state the action; disabled state has readable text and a programmatic reason. |
 | Input and OTP field | Use `input` tokens, persistent labels, visible focus, inline validation text, and adequate Hindi line height. OTP cells must read as one code to assistive technology. |
 | Language selector | Show the language names in their own scripts where practical; never use flags as language identifiers. |
 | KYC progress stepper | Show step name, current state, and progress text; color is supplementary. |

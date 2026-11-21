@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f6fc">
+    <meta name="description" content="A bilingual, fictional onboarding demo. Not for real investing.">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="styles.css">
+    <title data-i18n="pageTitle">Saathi — bilingual onboarding demo</title>
+  </head>
+  <body>
+    <div class="demo-banner"><span class="demo-dot" aria-hidden="true"></span><span data-i18n="demoBanner"></span></div>
+    <header class="topbar">
+      <a class="brand" href="#welcome" aria-label="Saathi home" data-i18n-aria="brandHome"><span class="brand-mark" aria-hidden="true">स</span><span>saathi<span class="brand-period">.</span></span></a>
+      <div class="top-actions">
+        <button class="help-link" data-action="help"><span aria-hidden="true">?</span><span data-i18n="help"></span></button>
+        <button class="lang-toggle" data-action="toggle-language" aria-label="Change language" data-i18n-aria="changeLanguage">हिंदी</button>
+      </div>
+    </header>
+    <main id="app" tabindex="-1" aria-live="polite"></main>
+    <footer class="site-footer"><span data-i18n="footerDemo"></span><button class="text-button" data-action="reset" data-i18n="startOver"></button></footer>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

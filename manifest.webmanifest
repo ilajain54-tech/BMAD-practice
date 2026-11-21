@@ -1,0 +1,10 @@
+{
+  "name": "Saathi Onboarding Demo",
+  "short_name": "Saathi Demo",
+  "description": "Fictional bilingual onboarding prototype, not for real investing.",
+  "lang": "en-IN",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f4f6fc",
+  "theme_color": "#4438b8"
+}

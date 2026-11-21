@@ -5,8 +5,56 @@ const PROVIDER_OUTCOMES = new Set(["simulated", "pending", "rejected", "unavaila
 const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value);
 
 export function createDemoState() {
-  return { mode: "demo", lang: "en", screen: "welcome", step: 0, states: {}, visited: {}, privacy: "" };
+  return { mode: "demo", lang: "en", screen: "welcome", step: 0, states: {}, visited: {}, privacy: "", investment: createInvestmentDemoState() };
 }
+
+const ORDER_STATES = new Set(["not-started", "pending", "failed", "completed"]);
+const PAYMENT_STATES = new Set(["not-started", "pending", "failed", "completed"]);
+const FUND_IDS = new Set(["saffron-index", "monsoon-bond", "pebble-hybrid", "terracotta-equity"]);
+const SCREENS = new Set(["welcome", "step", "status", "completion", "explore", "fund-detail", "order-review", "unavailable"]);
+
+export function createInvestmentDemoState() {
+  return { query: "", category: "all", selectedFund: "", frequency: "one-time", amount: "1000", orderStatus: "not-started", paymentStatus: "not-started" };
+}
+
+export function normalizeInvestmentDemoState(value) {
+  const input = isRecord(value) ? value : {};
+  return {
+    ...createInvestmentDemoState(),
+    query: typeof input.query === "string" ? input.query.slice(0, 80) : "",
+    category: ["all", "equity", "debt", "hybrid"].includes(input.category) ? input.category : "all",
+    selectedFund: FUND_IDS.has(input.selectedFund) ? input.selectedFund : "",
+    unavailableKind: ["invoice", "withdrawal"].includes(input.unavailableKind) ? input.unavailableKind : "withdrawal",
+    frequency: ["one-time", "sip"].includes(input.frequency) ? input.frequency : "one-time",
+    amount: ["500", "1000", "2500"].includes(String(input.amount)) ? String(input.amount) : "1000",
+    orderStatus: ORDER_STATES.has(input.orderStatus) ? input.orderStatus : "not-started",
+    paymentStatus: PAYMENT_STATES.has(input.paymentStatus) ? input.paymentStatus : "not-started"
+  };
+}
+
+export function transitionInvestmentDemo(state, type, outcome) {
+  const current = normalizeInvestmentDemoState(state);
+  if (type === "all") {
+    current.orderStatus = "not-started";
+    current.paymentStatus = "not-started";
+    return current;
+  }
+  if (type === "order" && ORDER_STATES.has(outcome)) {
+    current.orderStatus = outcome === "completed" && current.paymentStatus !== "completed" ? "pending" : outcome;
+  }
+  if (type === "payment" && PAYMENT_STATES.has(outcome)) {
+    current.paymentStatus = outcome;
+    if (outcome !== "completed" && current.orderStatus === "completed") current.orderStatus = "pending";
+  }
+  return current;
+}
+
+export function filterDemoCatalogue(funds, query = "", category = "all", categoryLabels = {}) {
+  const needle = String(query).trim().toLocaleLowerCase();
+  return funds.filter(fund => (category === "all" || fund.category === category) && (!needle || `${fund.name} ${fund.description} ${categoryLabels[fund.category] ?? fund.category}`.toLocaleLowerCase().includes(needle)));
+}
+
+export function isInvestmentCommitmentAvailable() { return false; }
 
 export function normalizeDemoState(saved) {
   if (!isRecord(saved) || !["en", "hi"].includes(saved.lang)) return createDemoState();
@@ -14,9 +62,10 @@ export function normalizeDemoState(saved) {
     ...createDemoState(),
     ...saved,
     mode: "demo",
-    screen: ["welcome", "step", "status", "completion"].includes(saved.screen) ? saved.screen : "welcome",
+    screen: SCREENS.has(saved.screen) ? saved.screen : "welcome",
     states: isRecord(saved.states) ? saved.states : {},
-    visited: isRecord(saved.visited) ? saved.visited : {}
+    visited: isRecord(saved.visited) ? saved.visited : {},
+    investment: normalizeInvestmentDemoState(saved.investment)
   };
 }
 

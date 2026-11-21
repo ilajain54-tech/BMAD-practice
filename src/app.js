@@ -1,6 +1,8 @@
 import { messages, t } from "./i18n.js";
 import {
   createDemoState,
+  filterDemoCatalogue,
+  isInvestmentCommitmentAvailable,
   isAuthoritativelyReady,
   isProviderStage,
   isStageReviewed,
@@ -8,7 +10,8 @@ import {
   nextIncompleteStage,
   normalizeDemoState,
   recordProviderOutcome,
-  retryDemoStage
+  retryDemoStage,
+  transitionInvestmentDemo
 } from "./onboarding-state.mjs";
 
 const STORAGE_KEY = "saathi-onboarding-demo-v1";
@@ -77,15 +80,68 @@ function renderCompletion() {
   return `<section class="completion-page"><div class="completion-symbol" aria-hidden="true">✓</div><p class="eyebrow">${t("demoComplete")}</p><h1>${t("completionTitle")}</h1><p class="lead">${t("completionBody")}</p><div class="completion-actions"><button class="button primary" data-action="review-steps">${t("restart")}</button><button class="button secondary" data-action="view-status">${t("statusTitle")}</button></div><p class="completion-note">${readinessLabel}</p></section>`;
 }
 
+const catalog = [
+  { id: "saffron-index", category: "equity", risk: "riskHigh" },
+  { id: "monsoon-bond", category: "debt", risk: "riskLow" },
+  { id: "pebble-hybrid", category: "hybrid", risk: "riskModerate" },
+  { id: "terracotta-equity", category: "equity", risk: "riskHigh" }
+];
+const categoryLabel = category => t(`category${category[0].toUpperCase()}${category.slice(1)}`, state.lang);
+const selectedFund = () => catalog.find(fund => fund.id === state.investment.selectedFund);
+function filteredFunds() {
+  const localized = catalog.map((fund, index) => ({ ...fund, index, name: t("funds")[index], description: t("fundDescriptions")[index] }));
+  const categoryLabels = { equity: t("equityCategory"), debt: t("debtCategory"), hybrid: t("hybridCategory") };
+  return filterDemoCatalogue(localized, state.investment.query, state.investment.category, categoryLabels);
+}
+function renderFundCard(fund) {
+  const index = fund.index;
+  return `<article class="fund-card"><p class="eyebrow">${t("fundLabel")}</p><p class="direct-plan-note">${t("directPlanExplanation")}</p><h2>${escapeHTML(t("funds")[index])}</h2><p>${escapeHTML(t("fundDescriptions")[index])}</p><div class="fund-meta"><span>${escapeHTML(categoryLabel(fund.category))}</span><span>${escapeHTML(t("riskLabel", state.lang, { risk: t(fund.risk) }))}</span></div><p class="freshness">${t("freshnessLabel")}</p><button class="button secondary" data-action="fund-detail" data-fund="${fund.id}">${t("detailsAction")}</button></article>`;
+}
+function renderExplore() {
+  const funds = filteredFunds();
+  const collectionOptions = [
+    ["all", "collectionAll", "collectionDescriptionAll"],
+    ["equity", "collectionEquity", "collectionDescriptionEquity"],
+    ["debt", "collectionDebt", "collectionDescriptionDebt"],
+    ["hybrid", "collectionHybrid", "collectionDescriptionHybrid"]
+  ];
+  const collections = collectionOptions.map(([category, title, description]) => `<button data-action="collection" data-category="${category}" aria-pressed="${state.investment.category === category}"><span>${t(title)}</span><small>${t(description)}</small></button>`).join("");
+  return `<section class="investment-page"><div class="investment-heading"><div><p class="eyebrow">${t("exploreEyebrow")}</p><h1>${t("exploreTitle")}</h1><p class="lead">${t("exploreIntro")}</p></div><div class="quick-paths"><button class="text-button" data-action="unavailable" data-kind="withdrawal">${t("pathWithdraw")}</button><button class="text-button" data-action="unavailable" data-kind="invoice">${t("pathInvoice")}</button></div></div><section class="collections" aria-label="${escapeHTML(t("collectionsTitle"))}"><strong>${t("collectionsTitle")}</strong>${collections}</section><section class="catalog-tools" aria-label="${escapeHTML(t("exploreTitle"))}"><label for="fund-search">${t("searchFunds")}</label><input id="fund-search" type="search" value="${escapeHTML(state.investment.query)}" placeholder="${escapeHTML(t("searchPlaceholder"))}" data-action="search-funds"><label for="fund-category">${t("categoryFilter")}</label><select id="fund-category" data-action="filter-funds"><option value="all" ${state.investment.category === "all" ? "selected" : ""}>${t("allCategories")}</option><option value="equity" ${state.investment.category === "equity" ? "selected" : ""}>${t("equityCategory")}</option><option value="debt" ${state.investment.category === "debt" ? "selected" : ""}>${t("debtCategory")}</option><option value="hybrid" ${state.investment.category === "hybrid" ? "selected" : ""}>${t("hybridCategory")}</option></select><button class="text-button" data-action="clear-filters">${t("clearFilters")}</button></section><div class="fund-grid">${funds.length ? funds.map(renderFundCard).join("") : `<div class="empty-state" role="status"><p>${t("noFunds")}</p><button class="button secondary" data-action="clear-filters">${t("clearFilters")}</button></div>`}</div></section>`;
+}
+function renderFundDetail() {
+  const fund = selectedFund();
+  if (!fund) return renderExplore();
+  const index = catalog.findIndex(item => item.id === fund.id);
+  return `<section class="investment-page"><button class="text-button" data-action="back-explore">← ${t("backExplore")}</button><article class="detail-panel"><p class="eyebrow">${t("detailsTitle")} · ${t("fundLabel")}</p><p class="direct-plan-note">${t("directPlanExplanation")}</p><h1>${escapeHTML(t("funds")[index])}</h1><p class="lead">${escapeHTML(t("fundDescriptions")[index])}</p><div class="fund-meta"><span>${escapeHTML(categoryLabel(fund.category))}</span><span>${escapeHTML(t("riskLabel", state.lang, { risk: t(fund.risk) }))}</span></div><h2>${t("whoItMaySuit")}</h2><p>${escapeHTML(t("fundSuitability")[index])}</p><p class="freshness">${t("freshnessLabel")}</p><div class="status-box unavailable"><strong>${t("notAdvice")}</strong><p>${t("expensesUnavailable")}</p><p>${t("staleNotice")}</p></div><button class="button primary" data-action="order-review">${t("reviewOrder")}</button></article></section>`;
+}
+function demoStatus(status) { return t(({ "not-started": "notStarted", pending: "demoPending", failed: "demoFailed", completed: "demoCompleted" })[status]); }
+function renderOrderReview() {
+  const fund = selectedFund();
+  const index = catalog.findIndex(item => item.id === fund?.id);
+  if (!fund) return `<section class="investment-page"><p>${t("selectFund")}</p><button class="button secondary" data-action="back-explore">${t("backExplore")}</button></section>`;
+  const amount = Number(state.investment.amount).toLocaleString(state.lang === "hi" ? "hi-IN" : "en-IN");
+  const amountSummary = state.investment.frequency === "sip" ? "sipAmountSummary" : "oneTimeAmountSummary";
+  return `<section class="investment-page"><button class="text-button" data-action="back-fund-detail">← ${t("backToFundDetails")}</button><div class="review-layout"><article class="detail-panel"><p class="eyebrow">${t("reviewTitle")}</p><h1>${t("reviewTitle")}</h1><h2>${t("selectedFund")}</h2><p>${escapeHTML(t("funds")[index])} · ${t("fundLabel")}</p><p class="fund-meta"><span>${escapeHTML(categoryLabel(fund.category))}</span><span>${escapeHTML(t("riskLabel", state.lang, { risk: t(fund.risk) }))}</span></p><label for="order-frequency">${t("orderType")}</label><select id="order-frequency" data-action="order-frequency"><option value="one-time" ${state.investment.frequency === "one-time" ? "selected" : ""}>${t("oneTime")}</option><option value="sip" ${state.investment.frequency === "sip" ? "selected" : ""}>${t("sip")}</option></select>${state.investment.frequency === "sip" ? `<div class="status-box unavailable"><strong>${t("sipTermsUnavailable")}</strong><p>${t("sipTermsDetail")}</p><p>${t("noRecurringInstruction")}</p></div>` : ""}<label for="order-amount">${t("amountLabel")}</label><select id="order-amount" data-action="order-amount"><option value="500" ${state.investment.amount === "500" ? "selected" : ""}>₹500</option><option value="1000" ${state.investment.amount === "1000" ? "selected" : ""}>₹1,000</option><option value="2500" ${state.investment.amount === "2500" ? "selected" : ""}>₹2,500</option></select><p class="order-summary">${t(amountSummary, state.lang, { amount })}</p><p class="demo-disclaimer">${t("reviewDisclosure")}</p><div class="status-box unavailable"><strong>${t("confirmBlocked")}</strong><p>${t("missingRequirements")}</p><p>${t("advisoryFeeUnavailable")}</p><p>${t("fundChargesUnavailable")}</p></div><button class="button primary" ${isInvestmentCommitmentAvailable() ? "" : "disabled aria-disabled=\"true\""}>${t("confirmBlocked")}</button></article><aside class="detail-panel"><p class="eyebrow">${t("simulateStatuses")}</p><button class="text-button" data-action="reset-demo-status">${t("resetSampleStatuses")}</button><h2>${t("sampleOrderStatus")}</h2><p class="state-pill">${demoStatus(state.investment.orderStatus)}</p>${renderStateButtons("order")}<h2>${t("samplePaymentStatus")}</h2><p class="state-pill">${demoStatus(state.investment.paymentStatus)}</p>${renderStateButtons("payment")}<p class="status-separation">${t("statusSeparation")}</p></aside></div></section>`;
+}
+function renderUnavailable() {
+  const kind = state.investment.unavailableKind;
+  return `<section class="investment-page"><button class="text-button" data-action="back-explore">← ${t("backExplore")}</button><div class="detail-panel"><p class="eyebrow">${t("unavailablePath")}</p><h1>${t(kind === "invoice" ? "pathInvoice" : "pathWithdraw")}</h1><div class="status-box unavailable"><strong>${t("unavailablePath")}</strong><p>${t(kind === "invoice" ? "invoiceUnavailable" : "withdrawalUnavailable")}</p></div></div></section>`;
+}
+
 function render() {
   document.documentElement.lang = state.lang === "hi" ? "hi" : "en";
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.title = t("pageTitle");
   document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
   document.querySelector(".lang-toggle").textContent = state.lang === "en" ? "हिन्दी" : "English";
+  document.querySelectorAll(".app-nav [data-action]").forEach(button => button.setAttribute("aria-current", button.dataset.screen === state.screen || (button.dataset.screen === "explore" && ["explore", "fund-detail", "order-review", "unavailable"].includes(state.screen)) ? "page" : "false"));
   if (state.screen === "welcome") app.innerHTML = renderWelcome();
   else if (state.screen === "step") app.innerHTML = renderStep();
   else if (state.screen === "status") app.innerHTML = renderStatus();
+  else if (state.screen === "explore") app.innerHTML = renderExplore();
+  else if (state.screen === "fund-detail") app.innerHTML = renderFundDetail();
+  else if (state.screen === "order-review") app.innerHTML = renderOrderReview();
+  else if (state.screen === "unavailable") app.innerHTML = renderUnavailable();
   else app.innerHTML = renderCompletion();
   app.focus({ preventScroll: true });
 }
@@ -130,6 +186,16 @@ document.addEventListener("click", event => {
   const action = button.dataset.action;
   if (action === "set-language") { state.lang = button.dataset.lang; save(); render(); }
   if (action === "toggle-language") { state.lang = state.lang === "en" ? "hi" : "en"; save(); render(); }
+  if (action === "navigate") { state.screen = button.dataset.screen; save(); render(); }
+  if (action === "fund-detail") { if (button.dataset.fund) state.investment.selectedFund = button.dataset.fund; state.screen = state.investment.selectedFund ? "fund-detail" : "explore"; save(); render(); }
+  if (action === "order-review") { state.screen = "order-review"; save(); render(); }
+  if (action === "back-explore") { state.screen = "explore"; save(); render(); }
+  if (action === "back-fund-detail") { state.screen = "fund-detail"; save(); render(); }
+  if (action === "unavailable") { state.investment.unavailableKind = button.dataset.kind; state.screen = "unavailable"; save(); render(); }
+  if (action === "clear-filters") { state.investment.query = ""; state.investment.category = "all"; save(); render(); }
+  if (action === "collection") { state.investment.category = button.dataset.category; save(); render(); }
+  if (action === "demo-status") { state.investment = transitionInvestmentDemo(state.investment, button.dataset.kind, button.dataset.status); save(); render(); }
+  if (action === "reset-demo-status") { state.investment = transitionInvestmentDemo(state.investment, "all", "not-started"); save(); render(); }
   if (action === "start") {
     const earliestIncomplete = nextIncompleteStage(state, messages.en.steps.length);
     if (earliestIncomplete >= 0) state.step = earliestIncomplete;
@@ -155,6 +221,38 @@ document.addEventListener("click", event => {
     if (window.confirm(t("resetConfirm"))) { state = fresh(); save(); render(); }
   }
   if (action === "check-code") { state.states[state.step] = "simulated"; state.visited[state.step] = true; save(); announce(t("codeGood")); render(); }
+});
+
+let searchComposing = false;
+function refreshSearch(input) {
+  state.investment.query = input.value.slice(0, 80);
+  save();
+  const cursor = input.selectionStart;
+  const selectionEnd = input.selectionEnd;
+  render();
+  const search = document.querySelector("#fund-search");
+  search?.focus({ preventScroll: true });
+  search?.setSelectionRange(cursor, selectionEnd);
+}
+document.addEventListener("compositionstart", event => {
+  if (event.target.matches?.('[data-action="search-funds"]')) searchComposing = true;
+});
+document.addEventListener("compositionend", event => {
+  if (!event.target.matches?.('[data-action="search-funds"]')) return;
+  searchComposing = false;
+  refreshSearch(event.target);
+});
+document.addEventListener("input", event => {
+  if (!event.target.matches('[data-action="search-funds"]')) return;
+  state.investment.query = event.target.value.slice(0, 80);
+  if (searchComposing || event.isComposing) { save(); return; }
+  refreshSearch(event.target);
+});
+document.addEventListener("change", event => {
+  const action = event.target.dataset.action;
+  if (action === "filter-funds") { state.investment.category = event.target.value; save(); render(); }
+  if (action === "order-frequency") { state.investment.frequency = event.target.value; save(); render(); document.querySelector("#order-frequency")?.focus({ preventScroll: true }); }
+  if (action === "order-amount") { state.investment.amount = event.target.value; save(); }
 });
 
 function showHelp() {
